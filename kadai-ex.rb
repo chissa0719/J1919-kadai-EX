@@ -38,6 +38,7 @@ Window.bgcolor = C_GREEN
 font = Font.new(32) #MS明朝
 title_font = Font.new(40)
 intro_font = Font.new(25)
+print_font = Font.new(20)
 
 #画像登録
 #タイトル画面背景
@@ -141,11 +142,25 @@ class Field
     #セレクト
     select_img = Image.load("images/select.png")
     #レベル
-    #hero.level = 99
     Window.draw_font(470,505,"Lv. #{hero.level}", print_font, color:[255,255,255,255],z:4)
-    #Window.draw_font(470,505,"Lv. 99", print_font, color:[255,255,255,255],z:4)
+    #バー色塗り
+    tmp_max = hero.need_exp / 10
+    for i in 1..10 #10分割
+      if hero.exp >= (i * tmp_max)
+        Window.draw_box_fill(535+(28 * (i-1)),  510, 535+(28 * (i-1))+28, 520, C_BLUE, z=4) #バー
+      end
+    end
     if hero.level != 99
       Window.draw_box_fill(530,  505, 820, 525, C_WHITE, z=4) #大枠
+      #経験値計算
+      #exp_calc(hero,enemy,field)      
+      #バー色塗り
+      tmp_max = hero.need_exp / 10
+      for i in 1..10 #10分割
+        if hero.exp >= (i * tmp_max)
+          Window.draw_box_fill(535+(28 * (i-1)),  510, 535+(28 * (i-1))+28, 520, C_BLUE, z=4) #バー
+        end
+      end
     else #レベル最大時、Maxで表示
       Window.draw_box_fill(530,  505, 820, 525, C_WHITE, z=4) #大枠
       Window.draw_box_fill(535,  510, 815, 520, C_BLUE, z=4) #バー
@@ -192,21 +207,107 @@ class Field
       Window.draw_font(455,50,"【ゴブリン】", battle_font, color:[255,0,0,0],z:3)
     end
   end
-  #バトル
-  def battle
-    #コマンド選択
-    Window.loop do
-      #速度比較
-      #自分のターン
+  #経験値計算
+  def exp_calc(hero,enemy,field)
+    title_img = Image.load("images/タイトル.jpg")
+    exp_cnt = 0
+    is_levelup = nil #レベルアップしたか
+    old_level = hero.level #取得前のレベル
+    old_power = hero.power
+    old_hp = hero.hp_max
+    old_mp = hero.mp_max
+    old_def = hero.def
+    old_speed = hero.speed
+    old_brain = hero.brain
+    #旅人は経験値の取得量が多い
+    if hero.hero_type == 5
+      enemy.exp *= 2
+    end
+    loop do
+      hero.exp += enemy.exp
+      if hero.exp >= hero.need_exp
+        hero.exp -= hero.need_exp
+        hero.need_exp *= 1.5
+        hero.need_exp = hero.need_exp.to_i
+        #ステータス増加
+        hero.hp_max += rand(2..7)
+        hero.hp = hero.hp_max
+        hero.mp_max += 5
+        hero.mp = hero.mp_max
+        hero.power += rand(3..7)
+        hero.def += rand(3..7)
+        hero.speed += rand(3..7)
+        hero.brain += rand(3..6)
+        #増加値調整
+        if hero.hero_type == 1
+          hero.power -= 3
+          hero.def += 3
+        elsif hero.hero_type == 2
+          hero.mp_max += rand(5..10)
+          hero.mp = hero.mp_max
+          hero.brain += rand(4..8)
+          hero.power -= 4
+        elsif hero.hero_type == 3
+          hero.power += rand(3..7)
+        elsif hero.hero_type == 4
+          hero.speed += rand(5..10)
+        end
+        hero.level += 1
+        is_levelup = true
+      else
+        break
+      end
+      exp_cnt += 1
+    end
+    new_level = hero.level #取得後のレベル
+    new_power = hero.power
+    new_hp = hero.hp
+    new_mp = hero.mp
+    new_def = hero.def
+    new_speed = hero.speed
+    new_brain = hero.brain
+    #レベルアップ表示
+    if is_levelup != nil
+      #クリック待ち
+      Window.loop do
+        #背景を描画
+        Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+        #敵を描画
+        enemy.print_enemy
+        #バトル枠表示
+        field.print_battle(hero,enemy,field)
+        #マウス座標取得
+        x = Input.mouse_pos_x  # マウスカーソルのx座標
+        y = Input.mouse_pos_y  # マウスカーソルのy座標
+        #表示枠
+        Window.draw_box_fill(470,  240, 820, 500, C_YELLOW, z=8) #大枠
+        Window.draw_box_fill(475,  245, 815, 495, C_BLACK, z=9) #内枠
+        #表示中身
+        print_font = Font.new(20)
+        Window.draw_font(535,265,"Level UP！    #{old_level} -> #{new_level}", print_font,z:10)
+        Window.draw_font(523,305,"  HP  UP！    #{old_hp} -> #{new_hp}", print_font,z:10)
+        Window.draw_font(523,335,"  MP  UP！    #{old_mp} -> #{new_mp}", print_font,z:10)
+        Window.draw_font(523,365,"ちから UP！    #{old_power} -> #{new_power}", print_font,z:10)
+        Window.draw_font(523,395,"ずのう UP！    #{old_brain} -> #{new_brain}", print_font,z:10)
+        Window.draw_font(523,425,"まもり UP！    #{old_def} -> #{new_def}", print_font,z:10)
+        Window.draw_font(523,455,"そくど UP！    #{old_speed} -> #{new_speed}", print_font,z:10)
+        #クリックしたら
+        if Input.mousePush?(M_LBUTTON)
+          break
+        end
+      end
     end
   end
 end
 
 #主人公
 class Hero
-  attr_accessor :hero_type, :level, :hp, :power, :brain, :avoid, :def, :cri, :hp_max, :mp, :mp_max, :speed
+  attr_accessor :hero_type, :level, :hp, :power, :brain, :avoid, :def, :cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
   def initialize
     @level = 1
+    @exp = 0
+    @money = 10
+    @need_exp = 10
   end
   #主人公タイプ登録
   def set_hero_level(num)
@@ -279,13 +380,20 @@ class Hero
     @def = @def.to_i
     @speed = @speed.to_i
   end
+  #わざ表示
+  def print_skill
+    print_font = Font.new(20)
+    Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
+    Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
+  end
 end
 
 #敵
 class Enemy
-  attr_accessor :hp, :type, :power, :brain, :def, :avoid
+  attr_accessor :hp, :type, :power, :brain, :def, :avoid, :speed, :exp
   def initialize
     @hp = -1
+    @exp = 0
   end
   #敵タイプ抽選
   def set_enemy
@@ -314,6 +422,17 @@ class Enemy
     @brain = rand(2+@type..@type*10) + ((stage_level - 1) * 5)
     #かいひ
     @avoid = 10
+    #そくど
+    @speed = 5 + (rand(5..10) * @type) + (stage_level - 1)
+    #経験値
+    @exp = rand(1..10) + (@type * 10) + ((stage_level - 1) * 15)
+    #整数調整
+    @hp = @hp.to_i
+    @power = @power.to_i
+    @def = @def.to_i
+    @brain = @brain.to_i
+    @speed = @speed.to_i
+    @exp = @exp.to_i
   end
   #HPチェック用
   def check_hp
@@ -321,7 +440,9 @@ class Enemy
   end
   def debug
     font = Font.new(32) #MS明朝
-    #Window.draw_font(400, 400, "hp : #{@hp}, power : #{@power}", font, color:[0,0,0])
+    Window.draw_font(400, 200, "hp : #{@hp}, power : #{@power}", font, color:[0,0,0],z:11)
+    Window.draw_font(400, 240, "def : #{@def}, speed : #{@speed}", font, color:[0,0,0],z:11)
+    Window.draw_font(400, 280, "brain : #{@brain}, exp : #{@exp}", font, color:[0,0,0],z:11)
   end
 end
 
@@ -480,11 +601,8 @@ Window.loop do
   #主人公タイプ設定
   hero.set_hero_level(is_select_num)
 
-  #難易度設定
-  #{かんたん、ふつう、むずかしい}
-
   #変数等準備
-  diff_level = 0 #難易度登録
+  diff_level = 0
 
   #選択画面
   Window.loop do
@@ -559,47 +677,120 @@ Window.loop do
   #{逃げる...敵または商人からチェンジ}
 
   #ターンをリセット
-  field.new_battle
+  #field.new_battle
 
   #主人公を生成
   hero.set_status
 
-  #初期敵を生成
+  field.new_battle
   enemy.set_enemy
   enemy.set_status(diff_level)
 
+  #Window.close
+
+  #「逃げる」フラグ
+  is_escaped = nil
+
   #メインループ
   Window.loop do
-
-    #背景を描画
-    Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
-
-    #敵を生成(debug : マウスホイールで敵を再生成)
-    if enemy.check_hp <= 0 && Input.mousePush?(M_MBUTTON)
+    
+    if enemy.hp <= 0
+      #hero.exp += enemy.exp
+      is_escaped = nil
+      if is_escaped != true #逃げたときは経験値が入らない
+        field.exp_calc(hero,enemy,field)
+      end
       field.new_battle
       enemy.set_enemy
       enemy.set_status(diff_level)
     end
 
-    #敵を描画
-    enemy.print_enemy
-    
-    #debug(右クリックで敵HPを0にする)
-    enemy.debug
-    if Input.mousePush?(M_RBUTTON)
-      enemy.hp = 0
+    #速度比較
+    #debug
+    hero.speed += 100
+    if hero.speed >= enemy.speed #自分が先制
+      #自分のターン
+      #選択画面
+      Window.loop do
+        #コマンド選択後か
+        is_selected = nil
+        #逃げたか
+        is_escaped = nil
+        #背景を描画
+        Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+        #敵を描画
+        enemy.print_enemy
+        #マウス座標取得
+        x = Input.mouse_pos_x  # マウスカーソルのx座標
+        y = Input.mouse_pos_y  # マウスカーソルのy座標
+        #こうどう選択枠
+        #バトル枠表示
+        field.print_battle(hero,enemy,field)
+        #コマンド枠
+        if x >= 172 && x <= 284 && y >= 545 && y <= 573 #こうげき
+          Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
+          if Input.mousePush?(M_LBUTTON)
+            #内容選択
+            Window.loop do
+              #背景を描画
+              Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+              #debug
+              enemy.debug
+              #敵を描画
+              enemy.print_enemy
+              #バトル枠表示
+              field.print_battle(hero,enemy,field)
+              #マウス座標取得
+              x = Input.mouse_pos_x  # マウスカーソルのx座標
+              y = Input.mouse_pos_y  # マウスカーソルのy座標
+              #たたかう選択枠
+              Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
+              #選択枠
+              Window.draw_box_fill(460, 465, 886, 725, C_BLACK, z=6) #黒で塗りつぶす
+              #HPとMP
+              Window.draw_font(490,491,"HP : #{hero.hp} / #{hero.hp_max}", print_font, color:[255,255,255,255],z:7)
+              Window.draw_font(670,491,"MP : #{hero.mp} / #{hero.mp_max}", print_font, color:[255,255,255,255],z:7)
+              #キャラごとに表示
+              hero.print_skill
+              #わざ選択枠
+              #Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
+              #Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
+              if x >= 475 && x <= 625 && y >= 541 && y <= 561 #通常攻撃
+                Window.draw_box(465, 531, 630, 571, C_WHITE, z=8)
+                if Input.mousePush?(M_LBUTTON)
+                  is_selected = true
+                  break
+                end
+              elsif x >= 655 && x <= 805 && y >= 541 && y <= 561 #強攻撃
+                Window.draw_box(645, 531, 810, 571, C_WHITE, z=8)
+                if Input.mousePush?(M_LBUTTON)
+                  hero.mp -= 1
+                  is_selected = true
+                  break
+                end
+              end
+            end
+          end
+        elsif x >= 173 && x <= 285 && y >= 605 && y <= 633 #ぼうぎょ
+          Window.draw_box(163, 595, 275, 643, C_WHITE, z=5)
+          if Input.mousePush?(M_LBUTTON)
+            break
+          end
+        elsif x >= 183 && x <= 267 && y >= 665 && y <= 693 #にげる
+          Window.draw_box(173, 655, 275, 703, C_WHITE, z=5)
+          if Input.mousePush?(M_LBUTTON)
+            enemy.hp = 0 #敵を消去
+            is_escaped = true #逃げた
+            break
+          end
+        end
+        #こうどう内容まで選択されていたらbreak
+        if is_selected != nil
+          break
+        end
+      end
+    else #相手のターン
     end
-
-
-    #マウス座標取得
-    x = Input.mouse_pos_x  # マウスカーソルのx座標
-    y = Input.mouse_pos_y  # マウスカーソルのy座標
-    
-    #マウス座標表示
-    #Window.draw_font(100, 100, "x : #{x}, y : #{y}", font)
-
-    #バトル枠表示
-    field.print_battle(hero,enemy,field)
 
     #ターンを進める
     field.turn_cnt
