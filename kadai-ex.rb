@@ -25,6 +25,21 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 
 =end
 
+=begin
+
+#やることリスト
+・各キャラに固有スキルを最低1つ追加
+->天使...確率即死(20%):MP20
+->魔法研究者...メテオ(消費MP*5倍のずのう攻撃):現在MPすべて
+->勇者...聖光の煌めき(速度(+20%)とクリティカル率上昇(+20%):3ターン):MP20
+->信仰者...神の導き(回避(+30%)と防御上昇(+30%):5ターン):MP40
+->旅人...弱者の知恵(「防御」コマンドでダメージ反射ができるようになる(敵の攻撃の50%):10ターン):MP10
+・ゲームオーバーを追加
+・音楽を追加
+・敵キャラを追加
+
+=end
+
 require 'dxruby'
 
 #画面サイズ
@@ -471,13 +486,15 @@ end
 
 #主人公
 class Hero
-  attr_accessor :hero_type, :level, :limit_turn, :hp, :power, :origin_power, :brain, :avoid, :def, :origin_def, :cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
+  attr_accessor :hero_type, :crt_page, :max_page, :level, :limit_turn, :hp, :power, :origin_power, :brain, :avoid, :def, :origin_def, :cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
   def initialize
     @level = 1
     @exp = 0
     @money = 10
     @need_exp = 10
     @limit_turn = 12
+    @crt_page = 1 #減税のページ数
+    @max_page = 2 #ページ総数
   end
   #主人公タイプ登録
   def set_hero_level(num)
@@ -555,22 +572,33 @@ class Hero
   #わざ表示
   def print_skill
     print_font = Font.new(20)
-    Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
-    ret = check_mp(1)
-    if ret != true
-      Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,0,0],z:8)
-    else
-      Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
+    if @crt_page == 1
+      Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
+      ret = check_mp(1)
+      if ret != true
+        Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,0,0],z:8)
+      else
+        Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
+      end
+      #キャラ固有技
+      #迷い人ならターン経過で攻撃力が上がるスキル
+      ret = check_mp(10)
+      if @hero_type == 1 && @level >= 1 && ret == true && @origin_power == @power
+        Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
+        Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
+      elsif  @hero_type == 1 && @level >= 1 && (ret != true || @origin_power != @power)
+        Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,0,0],z:8)
+        Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,0,0],z:8)
+      end
+    elsif @crt_page == 2
     end
-    #キャラ固有技
-    #迷い人ならターン経過で攻撃力が上がるスキル
-    ret = check_mp(10)
-    if @hero_type == 1 && @level >= 1 && ret == true
-      Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
-      Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
-    elsif  @hero_type == 1 && @level >= 1 && (ret != true || @origin_power != @power)
-      Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,0,0],z:8)
-      Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,0,0],z:8)
+    #次ページ
+    if @crt_page == 1 #1ページ目
+      Window.draw_font(575,671,"    #{@crt_page} / #{@max_page}   >", print_font, color:[255,255,255,255],z:8)
+    elsif @crt_page == @max_page #最終ページ
+      Window.draw_font(575,671,"<   #{@crt_page} / #{@max_page}", print_font, color:[255,255,255,255],z:8)
+    else #それ以外
+      Window.draw_font(575,671,"<   #{@crt_page} / #{@max_page}   >", print_font, color:[255,255,255,255],z:8)
     end
   end
   #自分の攻撃のダメージ計算
@@ -1209,7 +1237,7 @@ Window.loop do
               #わざ選択枠
               #Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
               #Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
-              if x >= 475 && x <= 625 && y >= 541 && y <= 561 #通常攻撃
+              if x >= 475 && x <= 625 && y >= 541 && y <= 561 && hero.crt_page == 1 #通常攻撃
                 Window.draw_box(465, 531, 630, 571, C_WHITE, z=8)
                 if Input.mousePush?(M_LBUTTON)
                   is_selected = true
@@ -1228,7 +1256,7 @@ Window.loop do
                     break
                   end
                 end
-              elsif x >= 475 && x <= 840 && y >= 581 && y <= 631#ラプソディ
+              elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 1 #ラプソディ
                 #Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
                 #Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
                 Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
@@ -1243,6 +1271,14 @@ Window.loop do
                     hero.limit_turn = 0 #10ターンの猶予
                     break
                   end
+                end
+              elsif x >= 655 && x <= 680 && y >= 665 && y <= 690 && hero.crt_page != hero.max_page #次ページ移動
+                if Input.mousePush?(M_LBUTTON)
+                  hero.crt_page += 1                  
+                end
+              elsif x >= 570 && x <= 595 && y >= 665 && y <= 690 && hero.crt_page != 1 #次ページ移動
+                if Input.mousePush?(M_LBUTTON)
+                  hero.crt_page -= 1                  
                 end
               end
             end
@@ -1303,6 +1339,7 @@ Window.loop do
         if x >= 172 && x <= 284 && y >= 545 && y <= 573 #こうげき
           Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
           if Input.mousePush?(M_LBUTTON)
+            field.status = 1
             #内容選択
             Window.loop do
               #背景を描画
@@ -1316,6 +1353,9 @@ Window.loop do
               #マウス座標取得
               x = Input.mouse_pos_x  # マウスカーソルのx座標
               y = Input.mouse_pos_y  # マウスカーソルのy座標
+              #debug
+              #マウス座標表示
+              Window.draw_font(100, 100, "x : #{x}, y : #{y}", font,z:18) 
               #たたかう選択枠
               Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
               #選択枠
@@ -1328,14 +1368,14 @@ Window.loop do
               #わざ選択枠
               #Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
               #Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
-              if x >= 475 && x <= 625 && y >= 541 && y <= 561 #通常攻撃
+              if x >= 475 && x <= 625 && y >= 541 && y <= 561 && hero.crt_page == 1 #通常攻撃
                 Window.draw_box(465, 531, 630, 571, C_WHITE, z=8)
                 if Input.mousePush?(M_LBUTTON)
                   is_selected = true
                   hero.calc_damage(hero,enemy,field,0,0)
                   break
                 end
-              elsif x >= 655 && x <= 805 && y >= 541 && y <= 561 #強攻撃
+              elsif x >= 655 && x <= 805 && y >= 541 && y <= 561 && hero.crt_page == 1 #強攻撃
                 Window.draw_box(645, 531, 810, 571, C_WHITE, z=8)
                 if Input.mousePush?(M_LBUTTON)
                   ret = nil
@@ -1347,7 +1387,7 @@ Window.loop do
                     break
                   end
                 end
-              elsif x >= 475 && x <= 840 && y >= 581 && y <= 631#ラプソディ
+              elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.hero_type == 1 && hero.crt_page == 1 #ラプソディ
                 #Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
                 #Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
                 Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
@@ -1363,8 +1403,17 @@ Window.loop do
                     break
                   end
                 end
+              elsif x >= 655 && x <= 680 && y >= 665 && y <= 690 && hero.crt_page != hero.max_page #次ページ移動
+                if Input.mousePush?(M_LBUTTON)
+                  hero.crt_page += 1                  
+                end
+              elsif x >= 570 && x <= 595 && y >= 665 && y <= 690 && hero.crt_page != 1 #次ページ移動
+                if Input.mousePush?(M_LBUTTON)
+                  hero.crt_page -= 1                  
+                end
               end
             end
+            field.status = 0
           end
         elsif x >= 173 && x <= 285 && y >= 605 && y <= 633 #ぼうぎょ
           Window.draw_box(163, 595, 275, 643, C_WHITE, z=5)
