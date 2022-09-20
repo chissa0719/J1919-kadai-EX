@@ -30,17 +30,14 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 #やることリスト
 
 ・各キャラに固有スキルを最低1つ追加
-✓->天使...確率即死(20%):MP20
-✓->魔法研究者...メテオ(消費MP*5倍のずのう攻撃):現在MPすべて
-#->勇者...聖光の煌めき(速度(+20%)とクリティカル率上昇(+20%):3ターン):MP20
-✓->勇者...不死鳥の加護(死んでも復活(3ターン継続)、死んだとき攻撃力+50%):MP20 ※Lv10以上
-✓->信仰者...神の導き(回避(+30%)と防御上昇(+30%):5ターン):MP40
 ->旅人...弱者の知恵(「防御」コマンドでダメージ反射ができるようになる(敵の攻撃の50%):10ターン):MP10
 ・ゲームオーバーを追加
 ・音楽を追加
 ・敵キャラを追加
-・MP回復問題
+✓MP回復問題
 ->時々現れる商人が回復してくれる or 「めいそう」コマンド
+✓お金システム
+・商人追加
 
 =end
 
@@ -68,8 +65,6 @@ chara_pick = Image.load("images/キャラ選択_背景.jpg")
 red_frame = Image.load("images/frame.png")
 #バトル下枠背景
 battle_frame = Image.load("images/battle_back.png")
-#セレクト
-select_img = Image.load("images/select.png")
 #女性キャラ1
 woman1_normal = Image.load("images/chara/woman1/face_normal.png")
 woman1_pinchi = Image.load("images/chara/woman1/face_pinchi.png")
@@ -194,8 +189,8 @@ class Field
     #男性キャラ3
     man3_normal = Image.load("images/chara/man3/face_normal.png")
     man3_pinchi = Image.load("images/chara/man3/face_pinchi.png")
-    #セレクト
-    select_img = Image.load("images/select.png")
+    #お金マーク
+    money_img = Image.load("images/money.png")
     #レベル
     Window.draw_font(470,505,"Lv. #{hero.level}", print_font, color:[255,255,255,255],z:4)
     #バー色塗り
@@ -286,6 +281,11 @@ class Field
     if hero.status == 2 && hero.hero_type == 4 && field.status != 1 #聖導のまもり
       Window.draw_font(490,476,"聖導のまもり : 残#{6-hero.limit_turn}ターン", print_font, color:[255,255,255,255],z:17)
     end
+    #お金表示
+    Window.draw_morph(350,653,375,653,375,678,350,678,money_img,z:3) #画像
+    #hero.money = 10000
+    now_money = hero.money.to_s.rjust(5) #取得前のレベル
+    Window.draw_font(380,654,"#{now_money}", print_font, color:[255,255,255,255],z:4) #数字
     #敵の名前
     if enemy.hp > 0
       #HP枠
@@ -310,6 +310,7 @@ class Field
   end
   #「敵を倒した！」表示
   def finished_battle(hero,enemy,field)
+    flag = nil
     Window.loop do
       #背景を描画
       title_img = Image.load("images/タイトル.jpg")
@@ -334,6 +335,18 @@ class Field
       if Input.mousePush?(M_LBUTTON)
         break
       end
+      #お金加算表示
+      if hero.hero_type == 4 && flag == nil #信仰者なら
+        enemy.money *= 2 #2倍獲得
+        flag = true
+      end
+      em_money = enemy.money.to_s.rjust(enemy.money.to_s.length) #取得前のレベル
+      Window.draw_font(370,684,"( + #{em_money} )", print_font, color:[255,255,255,255],z:4) #数字
+      if hero.hero_type == 4
+        #表示
+        tmp_money_font = Font.new(12)
+        Window.draw_font(385,710,"(×2倍)", tmp_money_font, color:[255,255,255,255],z:4) #数字
+      end
     end
   end
   #経験値計算
@@ -343,6 +356,8 @@ class Field
     #ラプソディ用
     hero.power = hero.origin_power
     #hero.def = hero.before_def
+    #お金を加算
+    hero.money += enemy.money
     is_levelup = nil #レベルアップしたか
     old_level = hero.level.to_s.rjust(2) #取得前のレベル
     old_power = hero.power.to_s.rjust(3)
@@ -755,7 +770,6 @@ class Hero
     #
     print_font = Font.new(20)
     die_font = Font.new(35) #MS明朝
-    select_img = Image.load("images/select.png")
     #回避したか
     is_avoid = nil
     #クリティカルが出たか
@@ -1150,7 +1164,7 @@ end
 
 #敵
 class Enemy
-  attr_accessor :hp, :type, :power, :brain, :def, :avoid, :speed, :exp, :hp_max
+  attr_accessor :hp, :type, :power, :brain, :def, :avoid, :speed, :exp, :hp_max, :money
   def initialize
     @hp = -1
     @exp = 0
@@ -1194,6 +1208,8 @@ class Enemy
       @exp = @exp/2
     end
     @exp = @exp.to_i
+    #お金
+    @money = @exp / 1.5
     #ステータス調整
     if hero.level == 1
       @hp *= 0.5
@@ -1209,6 +1225,7 @@ class Enemy
     @brain = @brain.to_i
     @speed = @speed.to_i
     @exp = @exp.to_i
+    @money = @money.to_i
   end
   #HPチェック用
   def check_hp
@@ -1223,7 +1240,6 @@ class Enemy
   #敵の攻撃
   def calc_damage(hero,enemy,field)
     print_font = Font.new(20)
-    select_img = Image.load("images/select.png")
     #クリティカルが出たか
     is_cri = nil
     #回避されたか
