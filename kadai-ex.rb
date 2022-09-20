@@ -32,8 +32,9 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 ・各キャラに固有スキルを最低1つ追加
 ✓->天使...確率即死(20%):MP20
 ✓->魔法研究者...メテオ(消費MP*5倍のずのう攻撃):現在MPすべて
-->勇者...聖光の煌めき(速度(+20%)とクリティカル率上昇(+20%):3ターン):MP20
-->信仰者...神の導き(回避(+30%)と防御上昇(+30%):5ターン):MP40
+#->勇者...聖光の煌めき(速度(+20%)とクリティカル率上昇(+20%):3ターン):MP20
+✓->勇者...不死鳥の加護(死んでも復活(3ターン継続)、死んだとき攻撃力+50%):MP20 ※Lv10以上
+✓->信仰者...神の導き(回避(+30%)と防御上昇(+30%):5ターン):MP40
 ->旅人...弱者の知恵(「防御」コマンドでダメージ反射ができるようになる(敵の攻撃の50%):10ターン):MP10
 ・ゲームオーバーを追加
 ・音楽を追加
@@ -113,7 +114,39 @@ class Field
     @field_option = num
   end
   #turnを1進める
-  def turn_cnt
+  def turn_cnt(hero,enemy,field)
+
+    #防御UPを解除
+    if hero.is_def == true
+      hero.def = hero.before_def
+      hero.is_def = nil
+    end
+
+    #ラプソディ解除
+    if (hero.status == 1 && hero.limit_turn > 5)
+      hero.status == 0
+    end
+
+    #聖導のまもり
+    if hero.status == 2 && hero.limit_turn >= 5
+      hero.status = 0
+      hero.def -= $up_def.to_i
+      hero.avoid = 10
+    end
+
+    #ラプソディ上昇倍率
+    if hero.hero_type == 1 && hero.limit_turn < 10 #継続中
+      up_power = hero.origin_power * (hero.limit_turn*0.1) + 1 # +10% -> +20% -> ... -> +90% -> +100%
+      hero.power += up_power
+      hero.power = hero.power.to_i
+    elsif hero.hero_type == 1 && hero.limit_turn == 10 #終了(元のdef値を代入)
+      hero.power = hero.origin_power
+    end
+
+    #迷い人の「ラプソディ」ターン減少
+    hero.limit_turn += 1
+
+    #ターンを進める
     @turn += 1
   end
   #戦闘開始
@@ -231,17 +264,27 @@ class Field
     end
     Window.draw_font(605,641,"ずのう :  #{hero.brain}", print_font, color:[255,255,255,255],z:4)
     #まもりが2倍になっていなければ
-    if hero.origin_def == hero.def
+    if (hero.origin_def == hero.def) || hero.status == 2
       Window.draw_font(745,641,"まもり :  #{hero.def}", print_font, color:[255,255,255,0],z:4)
     else
       Window.draw_font(745,641,"まもり :  #{hero.def}", print_font, color:[255,255,255,255],z:4)
     end
-    Window.draw_font(474,681,"かいひ :  #{hero.avoid}", print_font, color:[255,255,255,255],z:4)
+    if hero.status != 2
+      Window.draw_font(474,681,"かいひ :  #{hero.avoid}", print_font, color:[255,255,255,255],z:4)
+    elsif hero.status == 2
+      Window.draw_font(474,681,"かいひ :  #{hero.avoid}", print_font, color:[255,255,255,0],z:4)
+    end
     Window.draw_font(607,681,"そくど :  #{hero.speed}", print_font, color:[255,255,255,255],z:4)
     Window.draw_font(740,681,"かいしん :  #{hero.cri}", print_font, color:[255,255,255,255],z:4)
     #状態
-    if (hero.origin_power != hero.power) && field.status != 1
+    if (hero.origin_power != hero.power) && field.status != 1 && hero.hero_type == 1 #ラプソディ
       Window.draw_font(490,476,"ラプソディ : 残#{11-hero.limit_turn}ターン", print_font, color:[255,255,255,255],z:17)
+    end
+    if hero.status == 1 && field.status != 1 && hero.hero_type == 3 #不死鳥の加護
+      Window.draw_font(490,476,"不死鳥の加護 : 残#{6-hero.limit_turn}ターン", print_font, color:[255,255,255,255],z:17)
+    end
+    if hero.status == 2 && hero.hero_type == 4 && field.status != 1 #聖導のまもり
+      Window.draw_font(490,476,"聖導のまもり : 残#{6-hero.limit_turn}ターン", print_font, color:[255,255,255,255],z:17)
     end
     #敵の名前
     if enemy.hp > 0
@@ -505,11 +548,38 @@ class Field
     end
     end
   end
+  #「現れた！」表示
+  def entry_enemy(hero,enemy,field)
+    entry_font = Font.new(26)
+    Window.loop do
+      #背景を描画
+      title_img = Image.load("images/タイトル.jpg")
+      Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+      #敵を描画
+      enemy.print_enemy
+      #バトル枠表示
+      field.print_battle(hero,enemy,field)
+      #枠表示
+      Window.draw_box_fill(350,  190, 690, 290, C_YELLOW, z=1) #大枠(目標)
+      Window.draw_box_fill(355,  195, 685, 285, C_BLACK, z=2) #内枠(目標)
+      #マウス座標取得
+      x = Input.mouse_pos_x  # マウスカーソルのx座標
+      y = Input.mouse_pos_y  # マウスカーソルのy座標
+      #表示
+      if enemy.type == 1
+        Window.draw_font(405,230,"【ゴブリン】 が現れた！", entry_font,color:[255,255,255,255],z:3)
+      end
+      #クリックしたら
+      if Input.mousePush?(M_LBUTTON)
+        break
+      end
+    end
+  end
 end
 
 #主人公
 class Hero
-  attr_accessor :is_escaped, :hero_type, :crt_page, :max_page, :level, :limit_turn, :hp, :power, :origin_power, :brain, :avoid, :is_def, :def, :origin_def, :before_def, :cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
+  attr_accessor :status, :is_escaped, :hero_type, :crt_page, :max_page, :level, :limit_turn, :hp, :power, :origin_power, :brain, :avoid, :origin_avoid, :is_def, :def, :origin_def, :before_def, :cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
   def initialize
     @level = 1
     @exp = 0
@@ -519,6 +589,7 @@ class Hero
     @crt_page = 1 #減税のページ数
     @max_page = 2 #ページ総数
     @is_def = nil
+    @status = 0 #状態
   end
   #主人公タイプ登録
   def set_hero_level(num)
@@ -590,8 +661,10 @@ class Hero
     @origin_power = @power
     @brain = @brain.to_i
     @def = @def.to_i
+    @before_def = @def
     @origin_def = @def*2
     @speed = @speed.to_i
+    @origin_avoid = @avoid
   end
   #わざ表示
   def print_skill
@@ -632,6 +705,27 @@ class Hero
         elsif @level >= 1 && ret == true && @mp == 0
           Window.draw_font(475,581,"               メテオ : MP すべて", print_font, color:[255,255,0,0],z:8)
           Window.draw_font(475,611,"      (MPの消費量に応じた「ずのう」攻撃)", print_font, color:[255,255,0,0],z:8)
+        end
+      elsif @hero_type == 3 #勇者
+        ret = check_mp(30)
+        not_die_font = Font.new(17)
+        if @level >= 10 && ret == true #発動可能
+          Window.draw_font(475,581,"               不死鳥の加護 : MP 30", print_font, color:[255,255,255,255],z:8)
+          Window.draw_font(475,611,"(「1度だけHP0から復活し以後攻撃力+50%」状態を付与)", not_die_font, color:[255,255,255,255],z:8)
+        elsif @level >= 10 && ret == nil #MPが足りない
+          Window.draw_font(475,581,"               不死鳥の加護 : MP 30", print_font, color:[255,255,0,0],z:8)
+          Window.draw_font(475,611,"(「1度だけHP0から復活し以後攻撃力+50%」状態を付与)", not_die_font, color:[255,255,0,0],z:8)
+        elsif @level < 10 #レベルが足りない
+          Window.draw_font(475,601,"                (未開放:Lv.10～)", print_font, color:[255,255,255,255],z:8)
+        end
+      elsif @hero_type == 4 #信仰者
+        ret = check_mp(10)
+        if @level >= 1 && ret == true && @status != 2
+          Window.draw_font(475,581,"               聖導のまもり : MP 10", print_font, color:[255,255,255,255],z:8)
+          Window.draw_font(475,611,"     (まもり+30%、かいひ+30% : 継続5ターン)", print_font, color:[255,255,255,255],z:8)
+        elsif @level >= 1 && (ret == nil || @status == 2)
+          Window.draw_font(475,581,"               聖導のまもり : MP 10", print_font, color:[255,255,0,0],z:8)
+          Window.draw_font(475,611,"     (まもり+30%、かいひ+30% : 継続5ターン)", print_font, color:[255,255,0,0],z:8)
         end
       end
     elsif @crt_page == 2 #2ページ目
@@ -955,6 +1049,42 @@ class Hero
                 #ループを抜ける
                 break
               end
+            elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 3 && hero.level >= 10 #不死鳥の加護
+              Window.draw_box(465, 569, 878, 641, C_WHITE, z=8)
+              ret = nil
+              ret = hero.check_mp(30)
+              if Input.mousePush?(M_LBUTTON) && ret == true
+                #MP減少
+                hero.mp -= 30
+                #フラグ付与
+                hero.status = 1 #不死鳥の加護
+                #ターン設定
+                hero.limit_turn = 0
+                #行動確定
+                is_selected = true
+                #ループを抜ける
+                break
+              end
+            elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 4 #聖導のまもり
+              Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
+              ret = nil
+              ret = hero.check_mp(10)
+              if Input.mousePush?(M_LBUTTON) && ret == true && hero.status != 2
+                #MP減少
+                hero.mp -= 10
+                #計算
+                hero.status = 2 #聖導のまもり
+                hero.limit_turn = 0
+                #まもり+30%,かいひ+30%
+                hero.before_def = hero.def
+                $up_def = hero.before_def * 0.3
+                hero.def += $up_def.to_i
+                hero.avoid += 30
+                #行動確定
+                is_selected = true
+                #ループを抜ける
+                break
+              end
             elsif x >= 515 && x <= 800 && y >= 541 && y <= 561 && hero.crt_page == 2 #めいそう
               #Window.draw_font(515,541,"めいそう(MPを回復する) : MP 0", print_font, color:[255,255,255,255],z:8)
               Window.draw_box(505, 531, 800, 571, C_WHITE, z=8)
@@ -1121,6 +1251,10 @@ class Enemy
       if avd == 1 || avd == 2 || avd == 3 || avd == 4 || avd == 5
         is_avoid = true
       end
+    elsif hero.status == 2 #40%
+      if avd == 1 || avd == 2 || avd == 3 || avd == 4
+        is_avoid = true
+      end
     elsif hero.hero_type != 1
       if avd == 1
         is_avoid = true
@@ -1146,6 +1280,10 @@ class Enemy
     #回避していなければ減少
     if is_avoid != true
       hero.hp -= dmg
+    end
+    #0以下は表示に気を付ける
+    if hero.hp < 0
+      hero.hp = 0
     end
     #表示
     font = Font.new(32) #MS明朝
@@ -1186,6 +1324,13 @@ class Enemy
           break
         end
         print_time += 1
+    end
+    #不死鳥の加護
+    if (hero.status == 1 && hero.hp <= 0)
+      hero.hp = hero.hp_max
+      up_power = hero.origin_power * 0.5
+      hero.power += up_power.to_i
+      hero.status = 0 #フラグリセット
     end
   end
 end
@@ -1431,7 +1576,6 @@ Window.loop do
 
   #「ぼうぎょ」コマンド
   hero.is_def = nil
-  hero.before_def = 0
 
   first = true
 
@@ -1442,9 +1586,19 @@ Window.loop do
   Window.loop do
     
     if enemy.hp <= 0
-      #ラプソディリセット
+      #あらゆる状態をリセット
       hero.limit_turn = 12
+      hero.status = 0
+      #攻撃力リセット
       hero.power = hero.origin_power
+      #防御リセット
+      hero.def = hero.before_def
+      #回避リセット
+      if hero.status == 2
+        hero.avoid = 10
+        hero.def -= $up_def.to_i
+        hero.before_def = hero.def
+      end
       if hero.is_escaped != true && first != true #逃げたときは経験値が入らない
         field.finished_battle(hero,enemy,field)
         Window.update
@@ -1454,6 +1608,8 @@ Window.loop do
       field.new_battle
       enemy.set_enemy
       enemy.set_status(diff_level,hero,field)
+      #「～」が現れた！
+      field.entry_enemy(hero,enemy,field)
     end
 
     #速度比較
@@ -1464,10 +1620,14 @@ Window.loop do
       hero.origin_skill(hero,enemy,field)
       #自分のターン
       hero.my_turn(hero,enemy,field)
+      #継続ターン表示調整
+      hero.limit_turn += 1
       #敵の行動
       if enemy.hp > 0
         enemy.calc_damage(hero,enemy,field)
       end
+      #調整
+      hero.limit_turn -= 1
     else #相手の先制
       #ターン表示
       field.print_turn(hero,enemy,field)
@@ -1481,34 +1641,8 @@ Window.loop do
       hero.my_turn(hero,enemy,field)
     end
 
-    #防御UPを解除
-    if hero.is_def == true
-      hero.def = hero.before_def
-      hero.is_def = nil
-    end
-
-    #ラプソディ上昇倍率
-    if hero.hero_type == 1 && hero.limit_turn < 10 #継続中
-      up_power = hero.origin_power * (hero.limit_turn*0.1) + 1 # +10% -> +20% -> ... -> +90% -> +100%
-      hero.power += up_power
-      hero.power = hero.power.to_i
-    elsif hero.hero_type == 1 && hero.limit_turn == 10 #終了(元のdef値を代入)
-      hero.power = hero.origin_power
-    end
-
-    #迷い人の「ラプソディ」ターン減少
-    hero.limit_turn += 1
-
-    #毎ターンMPが1だけ回復
-    #cure_mp = hero.mp_max * 0.1
-    #hero.mp += cure_mp.to_i
-    #hero.mp += 1
-    #if hero.mp > hero.mp_max
-      #hero.mp = hero.mp_max
-    #end 
-
     #ターンを進める
-    field.turn_cnt
+    field.turn_cnt(hero,enemy,field)
 
   end
 
