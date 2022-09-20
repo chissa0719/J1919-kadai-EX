@@ -28,15 +28,18 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 =begin
 
 #やることリスト
+
 ・各キャラに固有スキルを最低1つ追加
-->天使...確率即死(20%):MP20
-->魔法研究者...メテオ(消費MP*5倍のずのう攻撃):現在MPすべて
+✓->天使...確率即死(20%):MP20
+✓->魔法研究者...メテオ(消費MP*5倍のずのう攻撃):現在MPすべて
 ->勇者...聖光の煌めき(速度(+20%)とクリティカル率上昇(+20%):3ターン):MP20
 ->信仰者...神の導き(回避(+30%)と防御上昇(+30%):5ターン):MP40
 ->旅人...弱者の知恵(「防御」コマンドでダメージ反射ができるようになる(敵の攻撃の50%):10ターン):MP10
 ・ゲームオーバーを追加
 ・音楽を追加
 ・敵キャラを追加
+・MP回復問題
+->時々現れる商人が回復してくれる or 「めいそう」コマンド
 
 =end
 
@@ -95,10 +98,11 @@ enemy_goblin_face = Image.load("images/enemy_face/face_1.png")
 
 #フィールド全体
 class Field
-  attr_accessor :enemy_level, :field_option, :turn, :status
+  attr_accessor :enemy_level, :field_option, :turn, :status, :battle_speed
   def initialize
     @field_option = 0
     @status = 0
+    @battle_speed = 1 #等倍
   end
   #ステージレベル登録
   def set_enemy_level(num)
@@ -240,8 +244,25 @@ class Field
       Window.draw_font(490,476,"ラプソディ : 残#{11-hero.limit_turn}ターン", print_font, color:[255,255,255,255],z:17)
     end
     #敵の名前
-    if enemy.type == 1 && enemy.hp > 0
-      Window.draw_font(455,50,"【ゴブリン】", battle_font, color:[255,0,0,0],z:3)
+    if enemy.hp > 0
+      #HP枠
+      Window.draw_box_fill(198,  398, 812, 422, C_BLACK, z=3)
+      Window.draw_box_fill(200,  400, 810, 420, C_WHITE, z=4)
+      #敵のHP表示
+      tmp_hp_max = enemy.hp_max * 0.1
+      #バー
+      for i in 1..10
+        if enemy.hp >= (tmp_hp_max * i)
+          Window.draw_box_fill(200,  400, 200 + (61 * i), 420, C_RED, z=5)
+        end
+      end
+      #名前枠
+      Window.draw_box_fill(410,  40, 630, 95, C_WHITE, z=3)
+      Window.draw_box_fill(415,  45, 625, 90, C_BLACK, z=4)
+      #敵の名前
+      if enemy.type == 1 
+        Window.draw_font(460,55,"【ゴブリン】", battle_font, color:[255,255,255,255],z:5)
+      end
     end
   end
   #「敵を倒した！」表示
@@ -295,7 +316,8 @@ class Field
       hero.exp += enemy.exp
       if hero.exp >= hero.need_exp
         hero.exp -= hero.need_exp
-        hero.need_exp *= 1.5
+        up_need = hero.need_exp * 0.3
+        hero.need_exp += up_need
         hero.need_exp = hero.need_exp.to_i
         #ステータス増加
         hero.hp_max += rand(1..3)
@@ -459,7 +481,7 @@ class Field
       #矢印
       Window.draw_font(486,280,"->", print_font,z:10)
       #敵アイコン表示
-      if enemy.type == 1
+      if enemy.type == 1 && enemy.hp > 0
         Window.draw_morph(370,258,440,258,440,328,370,328,enemy_goblin_face,z:15)
       end
       #自分アイコン表示
@@ -487,7 +509,7 @@ end
 
 #主人公
 class Hero
-  attr_accessor :is_escaped, :hero_type, :crt_page, :max_page, :level, :limit_turn, :hp, :power, :origin_power, :brain, :avoid, :is_def, :def, :origin_def, :before_def,:cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
+  attr_accessor :is_escaped, :hero_type, :crt_page, :max_page, :level, :limit_turn, :hp, :power, :origin_power, :brain, :avoid, :is_def, :def, :origin_def, :before_def, :cri, :hp_max, :mp, :mp_max, :speed, :exp, :money, :need_exp
   def initialize
     @level = 1
     @exp = 0
@@ -574,7 +596,7 @@ class Hero
   #わざ表示
   def print_skill
     print_font = Font.new(20)
-    if @crt_page == 1
+    if @crt_page == 1 #1ページ目
       Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
       ret = check_mp(1)
       if ret != true
@@ -584,15 +606,40 @@ class Hero
       end
       #キャラ固有技
       #迷い人ならターン経過で攻撃力が上がるスキル
-      ret = check_mp(10)
-      if @hero_type == 1 && @level >= 1 && ret == true && @origin_power == @power
-        Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
-        Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
-      elsif  @hero_type == 1 && @level >= 1 && (ret != true || @origin_power != @power)
-        Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,0,0],z:8)
-        Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,0,0],z:8)
+      if @hero_type == 0 #天使
+        ret = check_mp(10)
+        if @level >= 1 && ret == true
+          Window.draw_font(475,581,"             聖戦の響き : MP 10", print_font, color:[255,255,255,255],z:8)
+          Window.draw_font(475,611,"    (30%の確率で敵を即死させる魔法)", print_font, color:[255,255,255,255],z:8)
+        elsif @level >= 1 && ret == nil
+          Window.draw_font(475,581,"             聖戦の響き : MP 10", print_font, color:[255,255,0,0],z:8)
+          Window.draw_font(475,611,"    (30%の確率で敵を即死させる魔法)", print_font, color:[255,255,0,0],z:8)
+        end
+      elsif @hero_type == 1 #迷い人
+        ret = check_mp(10)
+        if @level >= 1 && ret == true && @origin_power == @power
+          Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
+          Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
+        elsif @level >= 1 && (ret != true || @origin_power != @power)
+          Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,0,0],z:8)
+          Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,0,0],z:8)
+        end
+      elsif @hero_type == 2 #魔法研究者
+        ret = check_mp(@mp)
+        if @level >= 1 && ret == true && @mp > 0
+          Window.draw_font(475,581,"               メテオ : MP すべて", print_font, color:[255,255,255,255],z:8)
+          Window.draw_font(475,611,"      (MPの消費量に応じた「ずのう」攻撃)", print_font, color:[255,255,255,255],z:8)
+        elsif @level >= 1 && ret == true && @mp == 0
+          Window.draw_font(475,581,"               メテオ : MP すべて", print_font, color:[255,255,0,0],z:8)
+          Window.draw_font(475,611,"      (MPの消費量に応じた「ずのう」攻撃)", print_font, color:[255,255,0,0],z:8)
+        end
       end
-    elsif @crt_page == 2
+    elsif @crt_page == 2 #2ページ目
+      if @mp != @mp_max
+        Window.draw_font(515,541,"めいそう(MPを回復する) : MP 0", print_font, color:[255,255,255,255],z:8)
+      elsif @mp == @mp_max
+        Window.draw_font(515,541,"めいそう(MPを回復する) : MP 0", print_font, color:[255,255,0,0],z:8)
+      end
     end
     #次ページ
     if @crt_page == 1 #1ページ目
@@ -604,21 +651,50 @@ class Hero
     end
   end
   #自分の攻撃のダメージ計算
-  def calc_damage(hero,enemy,field,pat,num) #pat...攻撃パターン(0:物理、1:魔法)
+  def calc_damage(hero,enemy,field,pat,num) #pat...攻撃パターン(0:物理、1:魔法), #num...識別番号
+    #
+    #patとnumの仕分け辞書
+    #(...,0,0)->通常攻撃
+    #(...,0,1)->強攻撃
+    #(...,1,0)->メテオ(魔法研究者固有スキル)
+    #(...,1,1)->聖戦の響き(天使固有スキル)
+    #
     print_font = Font.new(20)
+    die_font = Font.new(35) #MS明朝
     select_img = Image.load("images/select.png")
     #回避したか
     is_avoid = nil
     #クリティカルが出たか
     is_cri = nil
+    #即死したか
+    die_flag = nil
+    #「ミス」
+    is_miss = nil
     if pat == 0 #物理攻撃(通常攻撃、強攻撃)
       dmg = rand(hero.power..hero.power*1.5) - enemy.def
       if num == 1 #強攻撃
         dmg *= 1.5
       end
     elsif pat == 1 #魔法攻撃
-      dmg = rand(hero.brain..hero.brain*1.5) - enemy.brain
+      if num == 0 #メテオ
+        dmg = (hero.mp * 5 + rand((hero.brain*2)..(hero.brain*3))) - enemy.brain
+        #high = hero.mp * 5 + rand((hero.brain*1.0)..hero.brain)
+        #dmg = rand(hero.brain..hero.brain*1.5) - enemy.brain
+        hero.mp = 0 #mp全消費
+      elsif num == 1 #聖戦の響き
+        die_rand = rand(1..10)
+          if die_rand == 1 || die_rand == 2 || die_flag == 3
+            die_flag = true #即死したか
+            dmg = enemy.hp
+            enemy.hp = 0
+          else
+            is_miss = true #失敗は「かいひ」と表示
+          end
+      else
+        dmg = rand(hero.brain..hero.brain*1.5) - enemy.brain
+      end
     end
+    dmg = dmg.to_i
     #クリティカル計算
     cri = rand(1..10)
     if hero.hero_type != 3
@@ -638,7 +714,7 @@ class Hero
       is_avoid = true
     end 
     #敵の防御または頭脳が上回った場合は0にする
-    if dmg < 0
+    if dmg.to_i < 0
       dmg = 0
     end
     #整数化
@@ -681,18 +757,27 @@ class Hero
         Window.draw_morph(300,200,500,200,500,400,300,400,dmg_img,z:14)
         #font = Font.new(32) #MS明朝
         dmg = dmg.to_s.rjust(3)
-        #クリティカル表示
-        #is_cri = true
-        if is_cri == true
-          Window.draw_font(315,220,"クリティカル！", font, color:[255,255,255,0],z:16)
-        end
-        if is_avoid == nil
+        if is_miss == true
+          Window.draw_font(365,280,"ミス！", die_font, color:[255,255,255,255],z:15)
+        elsif die_flag == true #即死してたら「そくし」
+          Window.draw_font(352,280,"そくし", die_font, color:[255,255,255,255],z:15)
+        elsif is_avoid == nil #回避していなければ普通に表示
           Window.draw_font(375,280,"#{dmg}", font, color:[255,255,255,255],z:15)
-        elsif is_avoid == true
+          #クリティカル表示
+          if is_cri == true
+            Window.draw_font(315,220,"クリティカル！", font, color:[255,255,255,0],z:16)
+          end
+        elsif is_avoid == true #回避してれば「かいひ」
           Window.draw_font(352,280,"かいひ", font, color:[255,255,255,255],z:15)
+          #クリティカル表示
+          if is_cri == true
+            Window.draw_font(315,220,"クリティカル！", font, color:[255,255,255,0],z:16)
+          end
         end
+
         #時間経過
-        if print_time >= 20
+        default = 30 - (10 * (field.battle_speed - 1))
+        if print_time >= default
           break
         end
         print_time += 1
@@ -744,127 +829,179 @@ class Hero
         end
       end
     end
-    #自分のターン
-    def my_turn(hero,enemy,field)
-      #フォントサイズ
-      font = Font.new(32) #MS明朝
-      title_font = Font.new(40)
-      intro_font = Font.new(25)
-      print_font = Font.new(20)
-      #選択画面
-      Window.loop do
-        #コマンド選択後か
-        is_selected = nil
-        #逃げたか
-        hero.is_escaped = nil
-        #背景を描画
-        title_img = Image.load("images/タイトル.jpg")
-        Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
-        #敵を描画
-        enemy.print_enemy
-        #マウス座標取得
-        x = Input.mouse_pos_x  # マウスカーソルのx座標
-        y = Input.mouse_pos_y  # マウスカーソルのy座標
-        #こうどう選択枠
-        #バトル枠表示
-        field.print_battle(hero,enemy,field)
-        #コマンド枠
-        if x >= 172 && x <= 284 && y >= 545 && y <= 573 #こうげき
-          Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
-          if Input.mousePush?(M_LBUTTON)
-            #内容選択
-            Window.loop do
-              field.status = 1
-              #背景を描画
-              Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
-              #debug
-              #enemy.debug
-              #敵を描画
-              enemy.print_enemy
-              #バトル枠表示
-              field.print_battle(hero,enemy,field)
-              #マウス座標取得
-              x = Input.mouse_pos_x  # マウスカーソルのx座標
-              y = Input.mouse_pos_y  # マウスカーソルのy座標
-              #たたかう選択枠
-              Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
-              #選択枠
-              Window.draw_box_fill(460, 465, 886, 725, C_BLACK, z=6) #黒で塗りつぶす
-              #HPとMP
-              Window.draw_font(490,491,"HP : #{hero.hp} / #{hero.hp_max}", print_font, color:[255,255,255,255],z:7)
-              Window.draw_font(670,491,"MP : #{hero.mp} / #{hero.mp_max}", print_font, color:[255,255,255,255],z:7)
-              #キャラごとに表示
-              hero.print_skill
-              #わざ選択枠
-              #Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
-              #Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
-              if x >= 475 && x <= 625 && y >= 541 && y <= 561 && hero.crt_page == 1 #通常攻撃
-                Window.draw_box(465, 531, 630, 571, C_WHITE, z=8)
-                if Input.mousePush?(M_LBUTTON)
+  end
+  #自分のターン
+  def my_turn(hero,enemy,field)
+    #フォントサイズ
+    font = Font.new(32) #MS明朝
+    title_font = Font.new(40)
+    intro_font = Font.new(25)
+    print_font = Font.new(20)
+    #選択画面
+    Window.loop do
+      #コマンド選択後か
+      is_selected = nil
+      #逃げたか
+      hero.is_escaped = nil
+      #背景を描画
+      title_img = Image.load("images/タイトル.jpg")
+      Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+      #敵を描画
+      enemy.print_enemy
+      #マウス座標取得
+      x = Input.mouse_pos_x  # マウスカーソルのx座標
+      y = Input.mouse_pos_y  # マウスカーソルのy座標
+      #Window.draw_font(100, 100, "x : #{x}, y : #{y}", font)
+      #こうどう選択枠
+      #バトル枠表示
+      field.print_battle(hero,enemy,field)
+      #戦闘速度変更
+      Window.draw_box_fill(780, 8, 1020, 50, C_BLACK, z=6) #黒で塗りつぶす
+      Window.draw_font(800,20,"戦闘速度  :    <    #{field.battle_speed}x    >", print_font, color:[255,255,255,255],z:7)
+      if x >= 980 && x <= 1005 && y >= 20 && y <= 40 && field.battle_speed != 3 && Input.mousePush?(M_LBUTTON) #速度上昇
+        field.battle_speed += 1
+      end
+      if x >= 915 && x <= 935 && y >= 20 && y <= 40 && field.battle_speed != 1 && Input.mousePush?(M_LBUTTON) #速度減少
+        field.battle_speed -= 1
+      end
+      #コマンド枠
+      if x >= 172 && x <= 284 && y >= 545 && y <= 573 #こうげき
+        Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
+        if Input.mousePush?(M_LBUTTON)
+          #内容選択
+          Window.loop do
+            field.status = 1
+            #背景を描画
+            Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+            #debug
+            #enemy.debug
+            #敵を描画
+            enemy.print_enemy
+            #バトル枠表示
+            field.print_battle(hero,enemy,field)
+            #マウス座標取得
+            x = Input.mouse_pos_x  # マウスカーソルのx座標
+            y = Input.mouse_pos_y  # マウスカーソルのy座標
+            #たたかう選択枠
+            Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
+            #選択枠
+            Window.draw_box_fill(460, 465, 886, 725, C_BLACK, z=6) #黒で塗りつぶす
+            #HPとMP
+            Window.draw_font(490,491,"HP : #{hero.hp} / #{hero.hp_max}", print_font, color:[255,255,255,255],z:7)
+            Window.draw_font(670,491,"MP : #{hero.mp} / #{hero.mp_max}", print_font, color:[255,255,255,255],z:7)
+            #キャラごとに表示
+            hero.print_skill
+            #わざ選択枠
+            #Window.draw_font(475,541,"通常攻撃 : MP 0", print_font, color:[255,255,255,255],z:8)
+            #Window.draw_font(655,541," 強攻撃  : MP 1", print_font, color:[255,255,255,255],z:8)
+            if x >= 475 && x <= 625 && y >= 541 && y <= 561 && hero.crt_page == 1 #通常攻撃
+              Window.draw_box(465, 531, 630, 571, C_WHITE, z=8)
+              if Input.mousePush?(M_LBUTTON)
+                is_selected = true
+                hero.calc_damage(hero,enemy,field,0,0)
+                break
+              end
+            elsif x >= 655 && x <= 805 && y >= 541 && y <= 561 && hero.crt_page == 1 #強攻撃
+              Window.draw_box(645, 531, 810, 571, C_WHITE, z=8)
+              if Input.mousePush?(M_LBUTTON)
+                ret = nil
+                ret = hero.check_mp(1)
+                if ret == true
+                  hero.mp -= 1
                   is_selected = true
-                  hero.calc_damage(hero,enemy,field,0,0)
+                  hero.calc_damage(hero,enemy,field,0,1)
                   break
                 end
-              elsif x >= 655 && x <= 805 && y >= 541 && y <= 561 && hero.crt_page == 1 #強攻撃
-                Window.draw_box(645, 531, 810, 571, C_WHITE, z=8)
-                if Input.mousePush?(M_LBUTTON)
-                  ret = nil
-                  ret = hero.check_mp(1)
-                  if ret == true
-                    hero.mp -= 1
-                    is_selected = true
-                    hero.calc_damage(hero,enemy,field,0,1)
-                    break
-                  end
-                end
-              elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 1 #ラプソディ
-                #Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
-                #Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
-                Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
-                if Input.mousePush?(M_LBUTTON) && hero.limit_turn > 10
-                  ret = nil
-                  ret = hero.check_mp(10)
-                  if ret == true
-                    hero.mp -= 10
-                    is_selected = true
-                    #開始ターンを記憶
-                    #start_turn = field.turn
-                    hero.limit_turn = 0 #10ターンの猶予
-                    break
-                  end
-                end
-              elsif x >= 655 && x <= 680 && y >= 665 && y <= 690 && hero.crt_page != hero.max_page #次ページ移動
-                if Input.mousePush?(M_LBUTTON)
-                  hero.crt_page += 1                  
-                end
-              elsif x >= 570 && x <= 595 && y >= 665 && y <= 690 && hero.crt_page != 1 #次ページ移動
-                if Input.mousePush?(M_LBUTTON)
-                  hero.crt_page -= 1                  
+              end
+            elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 1 #ラプソディ
+              #Window.draw_font(475,581,"            ラプソディ : MP 10", print_font, color:[255,255,255,255],z:8)
+              #Window.draw_font(475,611,"(ターン経過ごとに攻撃力上昇:最大10ターン)", print_font, color:[255,255,255,255],z:8)
+              Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
+              if Input.mousePush?(M_LBUTTON) && hero.limit_turn > 10
+                ret = nil
+                ret = hero.check_mp(10)
+                if ret == true
+                  hero.mp -= 10
+                  is_selected = true
+                  #開始ターンを記憶
+                  #start_turn = field.turn
+                  hero.limit_turn = 0 #10ターンの猶予
+                  break
                 end
               end
+            elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 2 #メテオ
+              Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
+              ret = nil
+              ret = hero.check_mp(10)
+              if Input.mousePush?(M_LBUTTON) && ret == true
+                #ダメージ計算
+                hero.calc_damage(hero,enemy,field,1,0)
+                #行動確定
+                is_selected = true
+                #ループを抜ける
+                break
+              end
+            elsif x >= 475 && x <= 840 && y >= 581 && y <= 631 && hero.crt_page == 1 && hero.hero_type == 0 #聖戦の響き
+              Window.draw_box(465, 571, 850, 641, C_WHITE, z=8)
+              ret = nil
+              ret = hero.check_mp(10)
+              if Input.mousePush?(M_LBUTTON) && ret == true
+                #MP減少
+                hero.mp -= 10
+                #計算
+                hero.calc_damage(hero,enemy,field,1,1)
+                #行動確定
+                is_selected = true
+                #ループを抜ける
+                break
+              end
+            elsif x >= 515 && x <= 800 && y >= 541 && y <= 561 && hero.crt_page == 2 #めいそう
+              #Window.draw_font(515,541,"めいそう(MPを回復する) : MP 0", print_font, color:[255,255,255,255],z:8)
+              Window.draw_box(505, 531, 800, 571, C_WHITE, z=8)
+              if Input.mousePush?(M_LBUTTON) && (hero.mp != hero.mp_max) #最大値でなければ発動可能 
+                #MP回復
+                mp_cure = hero.mp_max * 0.1 #全体の1割
+                hero.mp += mp_cure.to_i #回復
+                if hero.mp > hero.mp_max #最大値を超えたら
+                  hero.mp = hero.mp_max
+                end
+                #行動確定
+                is_selected = true
+                #ループを抜ける
+                break
+              end
+            elsif x >= 655 && x <= 680 && y >= 665 && y <= 690 && hero.crt_page != hero.max_page #次ページ移動
+              if Input.mousePush?(M_LBUTTON)
+                hero.crt_page += 1                  
+              end
+            elsif x >= 570 && x <= 595 && y >= 665 && y <= 690 && hero.crt_page != 1 #次ページ移動
+              if Input.mousePush?(M_LBUTTON)
+                hero.crt_page -= 1                  
+              end
             end
-            field.status = 0
           end
-        elsif x >= 173 && x <= 285 && y >= 605 && y <= 633 #ぼうぎょ
-          Window.draw_box(163, 595, 275, 643, C_WHITE, z=5)
-          if Input.mousePush?(M_LBUTTON)
-            hero.before_def = hero.def
-            hero.def *= 2 #防御2倍
-            hero.is_def = true
-            break
-          end
-        elsif x >= 183 && x <= 267 && y >= 665 && y <= 693 #にげる
-          Window.draw_box(173, 655, 275, 703, C_WHITE, z=5)
-          if Input.mousePush?(M_LBUTTON)
-            enemy.hp = 0 #敵を消去
-            hero.is_escaped = true #逃げた
-            break
-          end
+          field.status = 0
         end
-        #こうどう内容まで選択されていたらbreak
-        if is_selected != nil
+      elsif x >= 173 && x <= 285 && y >= 605 && y <= 633 #ぼうぎょ
+        Window.draw_box(163, 595, 275, 643, C_WHITE, z=5)
+        if Input.mousePush?(M_LBUTTON)
+          hero.before_def = hero.def
+          hero.def *= 2 #防御2倍
+          #行動確定
+          hero.is_def = true
           break
         end
+      elsif x >= 183 && x <= 267 && y >= 665 && y <= 693 #にげる
+        Window.draw_box(173, 655, 275, 703, C_WHITE, z=5)
+        if Input.mousePush?(M_LBUTTON)
+          enemy.hp = 0 #敵を消去
+          hero.is_escaped = true #逃げた
+          break
+        end
+      end
+      #こうどう内容まで選択されていたらbreak
+      if is_selected != nil
+        break
       end
     end
   end
@@ -883,7 +1020,7 @@ end
 
 #敵
 class Enemy
-  attr_accessor :hp, :type, :power, :brain, :def, :avoid, :speed, :exp
+  attr_accessor :hp, :type, :power, :brain, :def, :avoid, :speed, :exp, :hp_max
   def initialize
     @hp = -1
     @exp = 0
@@ -921,6 +1058,12 @@ class Enemy
     #経験値
     all_status = @hp + @power + @def + @brain + @speed
     @exp = rand(1..10) + (@type * 15) + ((stage_level - 1) * 15) + (all_status * 0.3)
+    if field.enemy_level == 0
+      @exp = @exp/5
+    elsif field.enemy_level == 1
+      @exp = @exp/2
+    end
+    @exp = @exp.to_i
     #ステータス調整
     if hero.level == 1
       @hp *= 0.5
@@ -930,6 +1073,7 @@ class Enemy
     end
     #整数調整
     @hp = @hp.to_i
+    @hp_max = @hp
     @power = @power.to_i
     @def = @def.to_i
     @brain = @brain.to_i
@@ -982,6 +1126,17 @@ class Enemy
         is_avoid = true
       end
     end 
+    #ダメージ量に応じてMP回復
+    cure_mp = rand((dmg * 0.05)..(dmg * 0.1)) #ダメージの5%～10%の範囲が回復量
+    #if cure_mp.to_i <= 0 #最低1は回復
+      #cure_mp = 1
+    #end
+    #整数化
+    #cure_mp = cure_mp.to_i
+    #hero.mp += cure_mp
+    #if hero.mp > hero.mp_max
+      #hero.mp = hero.mp_max
+    #end
     #敵の防御または頭脳が上回った場合は0にする
     if dmg < 0
       dmg = 0
@@ -1023,8 +1178,11 @@ class Enemy
         elsif is_avoid == true
           Window.draw_font(352,430,"かいひ", font, color:[255,255,255,255],z:15)
         end
+        #MP回復表示
+        #Window.draw_font(345,460,"MP  + #{cure_mp}", font, color:[255,0,255,0],z:16)
         #クリックしたら
-        if print_time >= 20
+        default = 30 - (10 * (field.battle_speed - 1))
+        if print_time >= default
           break
         end
         print_time += 1
@@ -1268,12 +1426,6 @@ Window.loop do
   #主人公を生成
   hero.set_status
 
-  #field.new_battle
-  #enemy.set_enemy
-  #enemy.set_status(diff_level)
-
-  #Window.close
-
   #「逃げる」フラグ
   hero.is_escaped = nil
 
@@ -1283,24 +1435,20 @@ Window.loop do
 
   first = true
 
+  #ちらつき対策
   Window.update
 
   #メインループ
   Window.loop do
     
     if enemy.hp <= 0
-      #hero.exp += enemy.exp
-      #is_escaped = nil
       #ラプソディリセット
       hero.limit_turn = 12
       hero.power = hero.origin_power
-      #hero.def = hero.origin_def
-      if hero.is_escaped != true && first != true#逃げたときは経験値が入らない
-        #Window.update
+      if hero.is_escaped != true && first != true #逃げたときは経験値が入らない
         field.finished_battle(hero,enemy,field)
         Window.update
         field.exp_calc(hero,enemy,field)
-        #Window.update
       end
       first = nil
       field.new_battle
@@ -1340,16 +1488,24 @@ Window.loop do
     end
 
     #ラプソディ上昇倍率
-    if hero.hero_type == 1 && hero.limit_turn < 10
-      up_power = hero.origin_power * (hero.limit_turn*0.1) + 1
+    if hero.hero_type == 1 && hero.limit_turn < 10 #継続中
+      up_power = hero.origin_power * (hero.limit_turn*0.1) + 1 # +10% -> +20% -> ... -> +90% -> +100%
       hero.power += up_power
       hero.power = hero.power.to_i
-    elsif hero.hero_type == 1 && hero.limit_turn == 10
+    elsif hero.hero_type == 1 && hero.limit_turn == 10 #終了(元のdef値を代入)
       hero.power = hero.origin_power
     end
 
     #迷い人の「ラプソディ」ターン減少
     hero.limit_turn += 1
+
+    #毎ターンMPが1だけ回復
+    #cure_mp = hero.mp_max * 0.1
+    #hero.mp += cure_mp.to_i
+    #hero.mp += 1
+    #if hero.mp > hero.mp_max
+      #hero.mp = hero.mp_max
+    #end 
 
     #ターンを進める
     field.turn_cnt
