@@ -94,11 +94,13 @@ enemy_goblin_face = Image.load("images/enemy_face/face_1.png")
 
 #フィールド全体
 class Field
-  attr_accessor :enemy_level, :field_option, :turn, :status, :battle_speed
+  attr_accessor :enemy_level, :field_option, :turn, :status, :battle_speed, :crt_enemy, :next_enemy
   def initialize
     @field_option = 0
     @status = 0
     @battle_speed = 1 #等倍
+    @crt_enemy = 0 #未定
+    @next_enemy = 0 #未定
   end
   #ステージレベル登録
   def set_enemy_level(num)
@@ -189,6 +191,10 @@ class Field
     #男性キャラ3
     man3_normal = Image.load("images/chara/man3/face_normal.png")
     man3_pinchi = Image.load("images/chara/man3/face_pinchi.png")
+    #敵
+    enemy_goblin_face = Image.load("images/enemy_face/face_1.png")
+    #商人
+    merchant_img = Image.load("images/chara/merchant/face.png")
     #お金マーク
     money_img = Image.load("images/money.png")
     #レベル
@@ -288,6 +294,13 @@ class Field
     Window.draw_font(380,654,"#{now_money}", print_font, color:[255,255,255,255],z:4) #数字
     #敵の名前
     if enemy.hp > 0
+      #名前枠
+      Window.draw_box_fill(410,  40, 630, 95, C_WHITE, z=3)
+      Window.draw_box_fill(415,  45, 625, 90, C_BLACK, z=4)
+      #敵の名前
+      if enemy.type == 1 
+        Window.draw_font(460,55,"【ゴブリン】", battle_font, color:[255,255,255,255],z:5)
+      end
       #HP枠
       Window.draw_box_fill(198,  398, 812, 422, C_BLACK, z=3)
       Window.draw_box_fill(200,  400, 810, 420, C_WHITE, z=4)
@@ -299,13 +312,19 @@ class Field
           Window.draw_box_fill(200,  400, 200 + (61 * i), 420, C_RED, z=5)
         end
       end
-      #名前枠
-      Window.draw_box_fill(410,  40, 630, 95, C_WHITE, z=3)
-      Window.draw_box_fill(415,  45, 625, 90, C_BLACK, z=4)
-      #敵の名前
-      if enemy.type == 1 
-        Window.draw_font(460,55,"【ゴブリン】", battle_font, color:[255,255,255,255],z:5)
+    end
+    #左上表示枠
+    Window.draw_box_fill(20,  20, 170, 170, C_WHITE, z=2)
+    Window.draw_box_fill(25,  25, 165, 165, C_BLACK, z=3)
+    #文字
+    Window.draw_font(70,30,"つぎ", battle_font, color:[255,255,255,255],z:5)
+    #アイコン表示
+    if field.next_enemy == 1 #敵
+      if enemy.type == 1 #ゴブリン
+        Window.draw_morph(45,60,145,60,145,160,45,160,enemy_goblin_face,z:5)
       end
+    elsif field.next_enemy == 2 #商人
+        Window.draw_morph(45,60,145,60,145,160,45,160,merchant_img,z:5)
     end
   end
   #「敵を倒した！」表示
@@ -588,6 +607,22 @@ class Field
       if Input.mousePush?(M_LBUTTON)
         break
       end
+    end
+  end
+  #次回出てくる人の選定
+  def select_next(hero,enemy,field,first_flag)
+    is_next = rand(1..10)
+    #次の予定の人を今回の人に
+    field.crt_enemy = field.next_enemy
+    #次の選定
+    if (is_next != 1 && is_next != 2) || field.crt_enemy == 2 #確率を外した場合と商人の次は必ず敵
+      field.next_enemy = 1 #敵
+    else
+      field.next_enemy = 2 #商人
+    end
+    #初回は敵
+    if first_flag == true
+      field.crt_enemy = 1 #敵
     end
   end
 end
@@ -1351,10 +1386,35 @@ class Enemy
   end
 end
 
+#商人
+class Merchant
+  #商品設定
+  def set_things(field)
+  end
+  #表示等
+  def print_merchant(hero,enemy,field)
+    Window.loop do
+      #背景を描画
+      title_img = Image.load("images/タイトル.jpg")
+      Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+      #商人を描画
+      merchant_img = Image.load("images/chara/merchant/stand.png")
+      Window.draw_morph(400,50,500,50,500,150,400,150,merchant_img)
+      #バトル枠表示
+      field.print_battle(hero,enemy,field)
+      #クリックしたら
+      if Input.mousePush?(M_LBUTTON)
+        break
+      end
+    end    
+  end
+end
+
 #オブジェクト生成
 field = Field.new
 hero = Hero.new
 enemy = Enemy.new
+merchant = Merchant.new
 
 Window.loop do
   #タイトル画面
@@ -1615,50 +1675,63 @@ Window.loop do
         hero.def -= $up_def.to_i
         hero.before_def = hero.def
       end
-      if hero.is_escaped != true && first != true #逃げたときは経験値が入らない
+      if hero.is_escaped != true && first != true && field.crt_enemy == 1 #逃げたときは経験値が入らない
         field.finished_battle(hero,enemy,field)
         Window.update
         field.exp_calc(hero,enemy,field)
       end
+      field.select_next(hero,enemy,field,first)
       first = nil
-      field.new_battle
-      enemy.set_enemy
-      enemy.set_status(diff_level,hero,field)
-      #「～」が現れた！
-      field.entry_enemy(hero,enemy,field)
+      if field.crt_enemy == 1 #敵
+        field.new_battle
+        enemy.set_enemy
+        enemy.set_status(diff_level,hero,field)
+        #「～」が現れた！
+        field.entry_enemy(hero,enemy,field)
+      elsif field.crt_enemy == 2 #商人
+        #商品リセット
+        merchant.set_things(field)
+      end
     end
 
-    #速度比較
-    if hero.speed >= enemy.speed #自分が先制
-      #ターン表示
-      field.print_turn(hero,enemy,field)
-      #固有
-      hero.origin_skill(hero,enemy,field)
-      #自分のターン
-      hero.my_turn(hero,enemy,field)
-      #継続ターン表示調整
-      hero.limit_turn += 1
-      #敵の行動
-      if enemy.hp > 0
-        enemy.calc_damage(hero,enemy,field)
+    #バトルなら
+    if field.crt_enemy == 1
+      #速度比較
+      if hero.speed >= enemy.speed #自分が先制
+        #ターン表示
+        field.print_turn(hero,enemy,field)
+        #固有
+        hero.origin_skill(hero,enemy,field)
+        #自分のターン
+        hero.my_turn(hero,enemy,field)
+        #継続ターン表示調整
+        hero.limit_turn += 1
+        #敵の行動
+        if enemy.hp > 0
+          enemy.calc_damage(hero,enemy,field)
+        end
+        #調整
+        hero.limit_turn -= 1
+      else #相手の先制
+        #ターン表示
+        field.print_turn(hero,enemy,field)
+        #固有
+        hero.origin_skill(hero,enemy,field)
+        #敵の行動
+        if enemy.hp > 0
+          enemy.calc_damage(hero,enemy,field)
+        end
+        #自分のターン
+        hero.my_turn(hero,enemy,field)
       end
-      #調整
-      hero.limit_turn -= 1
-    else #相手の先制
-      #ターン表示
-      field.print_turn(hero,enemy,field)
-      #固有
-      hero.origin_skill(hero,enemy,field)
-      #敵の行動
-      if enemy.hp > 0
-        enemy.calc_damage(hero,enemy,field)
-      end
-      #自分のターン
-      hero.my_turn(hero,enemy,field)
-    end
 
-    #ターンを進める
-    field.turn_cnt(hero,enemy,field)
+      #ターンを進める
+      field.turn_cnt(hero,enemy,field)
+
+    elsif field.crt_enemy == 2 #商人
+      #表示
+      merchant.print_merchant(hero,enemy,field)
+    end
 
   end
 
