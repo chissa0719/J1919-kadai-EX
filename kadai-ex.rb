@@ -120,8 +120,8 @@ class Field
     end
 
     #特殊状態解除
-    if (hero.status == 1 && hero.limit_turn > 5) || (hero.status == 3 && hero.limit_turn >= 3 && hero.hero_type == 5)
-      hero.status == 0
+    if (hero.status == 1 && hero.limit_turn > 5) || (hero.status == 3 && hero.limit_turn >= 3)
+      hero.status = 0
     end
 
     #聖導のまもり
@@ -784,10 +784,10 @@ class Hero
         ret = check_mp(5)
         if @level >= 1 && ret == true && @status != 3
           Window.draw_font(475,581,"               リプライザル : MP 5", print_font, color:[255,255,255,255],z:8)
-          Window.draw_font(475,611,"    (攻撃を受けた時カウンター : 継続3ターン)", print_font, color:[255,255,255,255],z:8)
+          Window.draw_font(475,611,"  (敵の攻撃の100%カウンター : 継続3ターン)", print_font, color:[255,255,255,255],z:8)
         elsif @level >= 1 && (ret == nil || @status == 3)
           Window.draw_font(475,581,"               リプライザル : MP 5", print_font, color:[255,255,0,0],z:8)
-          Window.draw_font(475,611,"    (攻撃を受けた時カウンター : 継続3ターン)", print_font, color:[255,255,0,0],z:8)
+          Window.draw_font(475,611,"  (敵の攻撃の100%カウンター : 継続3ターン)", print_font, color:[255,255,0,0],z:8)
         end
       end
     elsif @crt_page == 2 #2ページ目
@@ -1168,7 +1168,11 @@ class Hero
               if Input.mousePush?(M_LBUTTON) && (hero.mp != hero.mp_max) #最大値でなければ発動可能 
                 #MP回復
                 mp_cure = hero.mp_max * 0.1 #全体の1割
-                hero.mp += mp_cure.to_i #回復
+                mp_cure = mp_cure.to_i
+                if mp_cure < 1 #最低1は回復
+                  mp_cure = 1
+                end
+                hero.mp += mp_cure #回復
                 if hero.mp > hero.mp_max #最大値を超えたら
                   hero.mp = hero.mp_max
                 end
@@ -1341,15 +1345,6 @@ class Enemy
     end 
     #ダメージ量に応じてMP回復
     cure_mp = rand((dmg * 0.05)..(dmg * 0.1)) #ダメージの5%～10%の範囲が回復量
-    #if cure_mp.to_i <= 0 #最低1は回復
-      #cure_mp = 1
-    #end
-    #整数化
-    #cure_mp = cure_mp.to_i
-    #hero.mp += cure_mp
-    #if hero.mp > hero.mp_max
-      #hero.mp = hero.mp_max
-    #end
     #敵の防御または頭脳が上回った場合は0にする
     if dmg < 0
       dmg = 0
@@ -1410,6 +1405,44 @@ class Enemy
       up_power = hero.origin_power * 0.5
       hero.power += up_power.to_i
       hero.status = 0 #フラグリセット
+    end
+    #リプライザルがあれば
+    if hero.status == 3
+      #リセット
+      print_time = 0
+      #ダメージ計算
+      tmp_dmg = dmg #敵の攻撃を保管
+      dmg = tmp_dmg * 5 #5倍で反撃
+      dmg = dmg.to_i #整数化
+      enemy.hp -= dmg 
+      Window.loop do
+        #背景を描画
+        title_img = Image.load("images/タイトル.jpg")
+        Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+        #敵を描画
+        enemy.print_enemy
+        #バトル枠表示
+        field.print_battle(hero,enemy,field)
+        #「たたかう」枠
+        Window.draw_box(162, 535, 284, 583, C_WHITE, z=5)
+        #マウス座標取得
+        x = Input.mouse_pos_x  # マウスカーソルのx座標
+        y = Input.mouse_pos_y  # マウスカーソルのy座標
+        #赤いやつ
+        dmg_img = Image.load("images/damage.png")
+        Window.draw_morph(300,200,500,200,500,400,300,400,dmg_img,z:14)
+        #font = Font.new(32) #MS明朝
+        dmg = dmg.to_s.rjust(3)
+        #表示
+        Window.draw_font(375,280,"#{dmg}", font, color:[255,255,255,255],z:15)
+
+        #時間経過
+        default = 30 - (10 * (field.battle_speed - 1))
+        if print_time >= default
+          break
+        end
+        print_time += 1
+      end
     end
   end
 end
@@ -1750,7 +1783,9 @@ Window.loop do
           enemy.calc_damage(hero,enemy,field)
         end
         #自分のターン
-        hero.my_turn(hero,enemy,field)
+        if enemy.hp > 0 #反撃で倒せる場合があるため
+          hero.my_turn(hero,enemy,field)
+        end
       end
 
       #ターンを進める
