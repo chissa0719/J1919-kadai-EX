@@ -29,8 +29,7 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 
 #やることリスト
 
-・各キャラに固有スキルを最低1つ追加
-->旅人...弱者の知恵(「防御」コマンドでダメージ反射ができるようになる(敵の攻撃の50%):10ターン):MP10
+✓各キャラに固有スキルを最低1つ追加
 ・ゲームオーバーを追加
 ・音楽を追加
 ・敵キャラを追加
@@ -614,7 +613,7 @@ class Field
   end
   #次回出てくる人の選定
   def select_next(hero,enemy,field,first_flag)
-    is_next = rand(1..10)
+    is_next = rand(1..6)
     #次の予定の人を今回の人に
     field.crt_enemy = field.next_enemy
     #次の選定
@@ -1454,20 +1453,93 @@ class Merchant
   end
   #表示等
   def print_merchant(hero,enemy,field)
+    #debug
+    hero.hp = 1
+    #表示順フラグ
+    print_num = 0
+    #回復したか
+    is_heal = nil
     Window.loop do
       #背景を描画
       title_img = Image.load("images/タイトル.jpg")
       Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
       #商人を描画
       merchant_img = Image.load("images/chara/merchant/stand.png")
-      Window.draw_morph(400,50,500,50,500,150,400,150,merchant_img)
+      Window.draw_morph(410,90,610,90,610,560,410,560,merchant_img)
       #バトル枠表示
       field.print_battle(hero,enemy,field)
+      #名前表示枠
+      #名前枠
+      Window.draw_box_fill(410,  40, 630, 95, C_WHITE, z=3)
+      Window.draw_box_fill(415,  45, 625, 90, C_BLACK, z=4)
+      #表示枠
+      if print_num == 0
+        Window.draw_box_fill(333,  330, 698, 420, C_YELLOW, z=2) #大枠
+        Window.draw_box_fill(338,  335, 693, 415, C_BLACK, z=3) #内枠
+      elsif print_num == 1
+        Window.draw_box_fill(333,  300, 698, 420, C_YELLOW, z=2) #大枠
+        Window.draw_box_fill(338,  305, 693, 415, C_BLACK, z=3) #内枠
+      elsif print_num == 2
+        Window.draw_box_fill(363,  230, 668, 315, C_YELLOW, z=2) #大枠
+        Window.draw_box_fill(368,  235, 663, 310, C_BLACK, z=3) #内枠
+      end
+      #名前枠
+      #フォント登録
+      merchant_font = Font.new(24)
+      Window.draw_font(460,55,"【旅の商人】", merchant_font, color:[255,255,255,255],z:5)
+      #文言
+      if print_num == 0
+        Window.draw_font(385,362,"ここまでよくぞいらしました。", merchant_font, color:[255,255,255,255],z:4)
+      elsif print_num == 1
+        if hero.hp == hero.hp_max && hero.mp == hero.mp_max && is_heal == nil #全回復状態なら表示しない文言
+          break #購入画面へ
+        else #そうでなければ回復文言表示
+          Window.draw_font(365,332,"おや、傷ついているのか", merchant_font, color:[255,255,255,255],z:4)
+          Window.draw_font(365,362,"回復薬だ、ゆっくり休みなさい...", merchant_font, color:[255,255,255,255],z:4)
+          is_heal = true
+        end
+      elsif print_num == 2
+        hero.hp = hero.hp_max
+        hero.mp = hero.mp_max
+        Window.draw_font(400,260,"HPとMPが全回復した！", merchant_font, color:[255,255,255,255],z:4)
+      end
+      #debug
+      #Window.draw_font(100,400,"print_num : #{print_num}", merchant_font, color:[255,0,0,0],z:4)
       #クリックしたら
+      if Input.mousePush?(M_LBUTTON)
+        print_num += 1
+        if print_num == 3
+          break
+        end
+      end
+    end
+    #商品購入画面
+    Window.loop do
+      #背景を描画
+      title_img = Image.load("images/タイトル.jpg")
+      Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+      #商人を描画
+      merchant_img = Image.load("images/chara/merchant/stand.png")
+      Window.draw_morph(410,90,610,90,610,560,410,560,merchant_img)
+      #バトル枠表示
+      field.print_battle(hero,enemy,field)
+      #名前表示枠
+      #名前枠
+      Window.draw_box_fill(410,  40, 630, 95, C_WHITE, z=3)
+      Window.draw_box_fill(415,  45, 625, 90, C_BLACK, z=4)
+      #表示枠
+      Window.draw_box_fill(333,  330, 698, 420, C_YELLOW, z=2) #大枠
+      Window.draw_box_fill(338,  335, 693, 415, C_BLACK, z=3) #内枠
+      #フォント登録
+      merchant_font = Font.new(24)
+      Window.draw_font(460,55,"【旅の商人】", merchant_font, color:[255,255,255,255],z:5)
+      #商品表示
+
+      #debug
       if Input.mousePush?(M_LBUTTON)
         break
       end
-    end    
+    end
   end
 end
 
