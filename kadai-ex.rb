@@ -1448,13 +1448,41 @@ end
 
 #商人
 class Merchant
-  #商品設定
-  def set_things(field)
+  #商品設定(薬草->HPの3割回復、回復薬->HPの6割回復、完全薬->HPの100%回復
+  #        経験値の巻物->expを1000獲得、経験値の本->expを2500獲得、経験値の秘伝書->expを5000獲得
+  #        剣の訓練教本->power+3、盾の訓練教本->def+3、早歩きの本->speed+3、
+  #        mpの巻物->mpを50%回復、mpの本->mp完全回復)
+  def set_things(hero,enemy,field)
+    #抽選配列
+    @all_things = ["薬草","回復薬","完全薬","経験値の巻物","経験値の本","経験値の秘伝書","剣の指導書","盾の指導書","早歩きの本","MPの巻物","MPの本"]
+    #値段登録用配列
+    @price = [50,150,400,500,1000,2000,250,250,250,250,400]
+    #商品登録配列
+    @things = []
+    #商品表示最大数
+    max_thing = 2 #デフォルト
+    if hero.level >= 10 && hero.level < 20 #Lv.10～19なら3個
+      max_thing = 3
+    elsif hero.level >= 20 && hero.level < 30 #Lv.20～29なら4個
+      max_thing = 4
+    elsif hero.level >= 30 && hero.level < 40 #Lv.30～39なら5個
+      max_thing = 5
+    elsif hero.level >= 40 #Lv.40以上なら6個
+      max_thing = 6
+    end
+    #登録
+    cnt = 0
+    name = []
+    max_thing.times do
+      name[cnt] = rand(0..10) #商品がallの何番目か格納
+      @things[cnt] = @all_things[name[cnt]] #商品名を登録
+      cnt += 1
+    end
   end
   #表示等
   def print_merchant(hero,enemy,field)
     #debug
-    hero.hp = 1
+    #hero.hp = 1
     #表示順フラグ
     print_num = 0
     #回復したか
@@ -1528,13 +1556,27 @@ class Merchant
       Window.draw_box_fill(410,  40, 630, 95, C_WHITE, z=3)
       Window.draw_box_fill(415,  45, 625, 90, C_BLACK, z=4)
       #表示枠
-      Window.draw_box_fill(333,  330, 698, 420, C_YELLOW, z=2) #大枠
-      Window.draw_box_fill(338,  335, 693, 415, C_BLACK, z=3) #内枠
+      Window.draw_box_fill(270,  120, 784, 450, C_WHITE, z=5) #大枠
+      Window.draw_box_fill(275,  125, 779, 445, C_BLACK, z=6) #内枠
       #フォント登録
       merchant_font = Font.new(24)
+      item_font = Font.new(15)
       Window.draw_font(460,55,"【旅の商人】", merchant_font, color:[255,255,255,255],z:5)
+      #商品画像登録
+      potion_img = Image.load("images/item/potion_ori.jpg")
+      #お金画像登録
+      money_img = Image.load("images/money.png")
       #商品表示
-
+      for i in 0..1 #縦2つ
+        for j in 0..2 #横3つ
+          #画像
+          Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
+          #商品名
+          Window.draw_font(365 + (150 * j),255 + (150 * i),"薬草", item_font, color:[255,255,255,255],z:7)
+          #お金画像表示
+          Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
+        end
+      end
       #debug
       if Input.mousePush?(M_LBUTTON)
         break
@@ -1823,7 +1865,7 @@ Window.loop do
         field.entry_enemy(hero,enemy,field)
       elsif field.crt_enemy == 2 #商人
         #商品リセット
-        merchant.set_things(field)
+        merchant.set_things(hero,enemy,field)
       end
     end
 
