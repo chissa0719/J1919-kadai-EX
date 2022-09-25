@@ -1,6 +1,6 @@
 <説明書>
 
-![logo_ori](https://user-images.githubusercontent.com/66831706/192134626-1f517601-de6d-4c48-b03f-7116c402f9c7.png)
+![logo_ori](https://user-images.githubusercontent.com/66831706/192134688-3ada3cc6-9450-415c-87f3-506d3d26fd9b.png)
 
 タイトル : バトルだけ？RPG
 
