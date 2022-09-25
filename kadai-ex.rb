@@ -1475,7 +1475,7 @@ class Merchant
       max_thing = 6
     end
     #debug
-    max_thing = 6
+    #max_thing = 6
     #登録
     cnt = 0
     @name = []
