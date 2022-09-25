@@ -41,6 +41,12 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 ✓商人追加
 ✓タイトル
 
+・一部未実装
+->音楽
+->効果音
+->タイトル画面「エクストラ」
+->ゲームオーバー
+
 =end
 
 require 'dxruby'
