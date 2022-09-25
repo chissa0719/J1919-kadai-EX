@@ -428,6 +428,7 @@ class Field
       end
       exp_cnt += 1
     end
+    #hero.origin_def = hero.def *= 2
     new_level = hero.level #取得後のレベル
     new_power = hero.power.to_s.rjust(3)
     new_hp = hero.hp_max.to_s.rjust(3)
@@ -1457,7 +1458,7 @@ class Merchant
     #@all_things = ["薬草","回復薬","完全薬","経験値の巻物","経験値の本","経験値の秘伝書","剣の指導書","盾の指導書","早歩きの本","MPの巻物","MPの本"]
     @all_things = ["薬草","回復薬","経験値の本","剣の指導書","盾の指導書","早歩きの本","精神力の本"]
     #値段登録用配列
-    @price = [50,400,1000,250,250,250,400]
+    @price = [100,400,1000,250,250,250,400]
     #商品登録配列
     @things = ["-1","-1","-1","-1","-1","-1"]
     #商品表示最大数
@@ -1471,6 +1472,8 @@ class Merchant
     elsif hero.level >= 40 #Lv.40以上なら6個
       max_thing = 6
     end
+    #debug
+    max_thing = 6
     #登録
     cnt = 0
     @name = []
@@ -1484,6 +1487,7 @@ class Merchant
   def print_merchant(hero,enemy,field)
     #debug
     #hero.hp = 1
+    hero.money = 10000
     #表示順フラグ
     print_num = 0
     #回復したか
@@ -1544,6 +1548,8 @@ class Merchant
     end
     #商品購入画面
     Window.loop do
+      #リセット
+      effect = nil
       #背景を描画
       title_img = Image.load("images/タイトル.jpg")
       Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
@@ -1567,9 +1573,20 @@ class Merchant
       potion_img = Image.load("images/item/potion_ori.jpg")
       #お金画像登録
       money_img = Image.load("images/money.png")
+      #ここを出る表示
+      Window.draw_box_fill(800,  400, 950, 450, C_WHITE, z=5) #大枠
+      Window.draw_box_fill(805,  405, 945, 445, C_RED, z=6) #内枠
+      Window.draw_font(823,413,"ここを去る", merchant_font, color:[255,255,255,255],z:7)
+      #マウス座標取得
+      x = Input.mouse_pos_x  # マウスカーソルのx座標
+      y = Input.mouse_pos_y  # マウスカーソルのy座標
+      #マウス座標表示
+      Window.draw_font(100, 350, "x : #{x}, y : #{y}", merchant_font,color:[255,0,0,0],z:10)
       #商品表示
       for i in 0..1 #縦2つ
         for j in 0..2 #横3つ
+          #debug
+          #Window.draw_font(500,50+(50*(j+(i*3))),"@things[j+(i*3)] : #{@things[j+(i*3)]}", merchant_font, color:[255,255,255,255],z:10)
           if @things[j+(i*3)] == "薬草"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1579,7 +1596,11 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (155 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
           elsif @things[j+(i*3)] == "回復薬"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1589,7 +1610,12 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (155 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            #Window.draw_font(365 + (150 * j),280 + (145 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
           elsif @things[j+(i*3)] == "経験値の本"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1599,7 +1625,12 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (155 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            #Window.draw_font(365 + (150 * j),280 + (145 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
           elsif @things[j+(i*3)] == "剣の指導書"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1609,7 +1640,12 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (155 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)          elsif @things[j+(i*3)] == "盾の指導書"
+            #Window.draw_font(365 + (150 * j),280 + (145 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
           elsif @things[j+(i*3)] == "盾の指導書"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1619,7 +1655,12 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (150 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            #Window.draw_font(365 + (150 * j),280 + (145 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
           elsif @things[j+(i*3)] == "早歩きの本"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1629,7 +1670,12 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (155 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            #Window.draw_font(365 + (150 * j),280 + (145 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
           elsif @things[j+(i*3)] == "精神力の本"
             #画像
             Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
@@ -1639,15 +1685,78 @@ class Merchant
             Window.draw_morph(450 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),275 + (145 * i),475 + (37*j) + (115 * (j-1)),300 + (145 * i),450 + (37*j) + (115 * (j-1)),300 + (145 * i),money_img,z:7)
             #金額表示
             #Window.draw_font(460,55,"#{@price[@name[j+(i*3)]]}", merchant_font, color:[255,255,255,255],z:7)
-            Window.draw_font(365 + (150 * j),280 + (155 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            #Window.draw_font(365 + (150 * j),280 + (145 * i),"#{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            if hero.money >= @price[@name[j+(i*3)]]
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,255,255],z:7)
+            else
+              Window.draw_font(365 + (150 * j),280 + (145 * i),"  #{@price[@name[j+(i*3)]]}", item_font, color:[255,255,0,0],z:7)
+            end
+          elsif @things[j+(i*3)] == "0"
+            #商品名
+            Window.draw_font(355 + (150 * j),200 + (150 * i),"(購入済)", item_font, color:[255,255,255,255],z:7)
           else
             #商品名
             Window.draw_font(355 + (150 * j),200 + (150 * i),"(未開放)", item_font, color:[255,255,255,255],z:7)
           end
         end
       end
-      #debug
-      if Input.mousePush?(M_LBUTTON)
+      #マウス判定
+      if x >= 330 && x <= 430 && y >= 150 && y <= 250 && Input.mousePush?(M_LBUTTON) && hero.money >= @price[0] && @things[0] != "0" && @things[0] != "-1"
+        effect = @things[0]
+        hero.money -= @price[0]
+        @things[0] = "0"
+      elsif x >= 480 && x <= 580 && y >= 150 && y <= 250 && Input.mousePush?(M_LBUTTON) && hero.money >= @price[1] && @things[1] != "0" && @things[1] != "-1"
+        effect = @things[1]
+        hero.money -= @price[1]
+        @things[1] = "0"
+      elsif x >= 630 && x <= 730 && y >= 150 && y <= 250 && Input.mousePush?(M_LBUTTON) && hero.money >= @price[2] && @things[2] != "0" && @things[2] != "-1"
+        effect = @things[2]
+        hero.money -= @price[2]
+        @things[2] = "0"
+      elsif x >= 330 && x <= 430 && y >= 300 && y <= 400 && Input.mousePush?(M_LBUTTON) && hero.money >= @price[3] && @things[3] != "0" && @things[3] != "-1"
+        effect = @things[3]
+        hero.money -= @price[3]
+        @things[3] = "0"
+      elsif x >= 480 && x <= 580 && y >= 300 && y <= 400 && Input.mousePush?(M_LBUTTON) && hero.money >= @price[4] && @things[4] != "0" && @things[4] != "-1"
+        effect = @things[4]
+        hero.money -= @price[4]
+        @things[4] = "0"
+      elsif x >= 630 && x <= 730 && y >= 300 && y <= 400 && Input.mousePush?(M_LBUTTON) && hero.money >= @price[5] && @things[5] != "0" && @things[5] != "-1"
+        effect = @things[5]
+        hero.money -= @price[5]
+        @things[5] = "0"
+      end
+      #結果
+      if effect == "薬草" #3割回復
+        cure = hero.hp_max * 0.3
+        hero.hp += cure.to_i
+        if hero.hp > hero.hp_max
+          hero.hp = hero.hp_max
+        end
+      elsif effect == "回復薬"
+        cure = hero.hp_max * 0.8
+        hero.hp += cure.to_i
+        if hero.hp > hero.hp_max
+          hero.hp = hero.hp_max
+        end
+      elsif effect == "経験値の本"
+        enemy.exp = 1000
+        field.exp_calc(hero,enemy,field)
+      elsif effect == "剣の指導書"
+        hero.power += rand(1..3)
+        hero.origin_power = hero.power
+      elsif effect == "盾の指導書"
+        hero.def += rand(1..3)
+        hero.origin_def = hero.def * 2
+        hero.before_def = hero.def
+      elsif effect == "早歩きの本"
+        hero.speed += rand(1..3)
+      elsif effect == "精神力の本"
+        hero.mp_max += rand(2..5)
+        hero.mp = hero.mp_max
+      end
+      #去る
+      if x >= 800 && x <= 950 && y >= 400 && y <= 450 && Input.mousePush?(M_LBUTTON)
         break
       end
     end
