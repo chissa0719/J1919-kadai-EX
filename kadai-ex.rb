@@ -32,11 +32,11 @@ URL : https://github.com/chissa0719/J1919-kadai-EX
 ✓各キャラに固有スキルを最低1つ追加
 ・ゲームオーバーを追加
 ・音楽を追加
-・敵キャラを追加
+(・敵キャラを追加)
 ✓MP回復問題
-->時々現れる商人が回復してくれる or 「めいそう」コマンド
 ✓お金システム
-・商人追加
+✓商人追加
+✓タイトル
 
 =end
 
@@ -58,6 +58,8 @@ print_font = Font.new(20)
 #画像登録
 #タイトル画面背景
 title_img = Image.load("images/タイトル.jpg")
+#タイトル画像
+title_name = Image.load("images/logo.png")
 #キャラ選択画面背景
 chara_pick = Image.load("images/キャラ選択_背景.jpg")
 #赤枠
@@ -1487,7 +1489,7 @@ class Merchant
   def print_merchant(hero,enemy,field)
     #debug
     #hero.hp = 1
-    hero.money = 10000
+    #hero.money = 10000
     #表示順フラグ
     print_num = 0
     #回復したか
@@ -1571,6 +1573,8 @@ class Merchant
       Window.draw_font(460,55,"【旅の商人】", merchant_font, color:[255,255,255,255],z:5)
       #商品画像登録
       potion_img = Image.load("images/item/potion_ori.jpg")
+      book_img = Image.load("images/item/book_ori.jpg")
+      paper_img = Image.load("images/item/paper_ori.jpg")
       #お金画像登録
       money_img = Image.load("images/money.png")
       #ここを出る表示
@@ -1618,7 +1622,7 @@ class Merchant
             end
           elsif @things[j+(i*3)] == "経験値の本"
             #画像
-            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
+            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),book_img,z:7)
             #商品名
             Window.draw_font(344 + (150 * j),255 + (150 * i),"経験値の本", item_font, color:[255,255,255,255],z:7)
             #お金画像表示
@@ -1633,7 +1637,7 @@ class Merchant
             end
           elsif @things[j+(i*3)] == "剣の指導書"
             #画像
-            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
+            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),book_img,z:7)
             #商品名
             Window.draw_font(344 + (150 * j),255 + (150 * i),"剣の指導書", item_font, color:[255,255,255,255],z:7)
             #お金画像表示
@@ -1648,7 +1652,7 @@ class Merchant
             end
           elsif @things[j+(i*3)] == "盾の指導書"
             #画像
-            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
+            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),book_img,z:7)
             #商品名
             Window.draw_font(344 + (150 * j),255 + (150 * i),"盾の指導書", item_font, color:[255,255,255,255],z:7)
             #お金画像表示
@@ -1663,7 +1667,7 @@ class Merchant
             end
           elsif @things[j+(i*3)] == "早歩きの本"
             #画像
-            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
+            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),book_img,z:7)
             #商品名
             Window.draw_font(344 + (150 * j),255 + (150 * i),"早歩きの本", item_font, color:[255,255,255,255],z:7)
             #お金画像表示
@@ -1678,7 +1682,7 @@ class Merchant
             end
           elsif @things[j+(i*3)] == "精神力の本"
             #画像
-            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),potion_img,z:7)
+            Window.draw_morph(450 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),150 + (150 * i),550 + (30*j) + (120 * (j-1)),250 + (150 * i),450 + (30*j) + (120 * (j-1)),250 + (150 * i),book_img,z:7)
             #商品名
             Window.draw_font(344 + (150 * j),255 + (150 * i),"精神力の本", item_font, color:[255,255,255,255],z:7)
             #お金画像表示
@@ -1775,6 +1779,9 @@ Window.loop do
 
     #背景を描画
     Window.draw_morph(0,0,1024,0,1024,768,0,768,title_img)
+
+    #タイトル表示
+    Window.draw_morph(300,0,724,0,724,424,300,424,title_name)
 
     #マウス座標取得
     x = Input.mouse_pos_x  # マウスカーソルのx座標
